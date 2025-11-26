@@ -55,7 +55,13 @@ export class Engine {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 4000);
         this.camera.position.z = 1000;
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,          // Smooth edges
+            preserveDrawingBuffer: true,
+            alpha: true,
+            powerPreference: 'high-performance' // Request high-performance GPU
+        });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Sharper on high-DPI screens
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0x000000, 1);
         container.appendChild(this.renderer.domElement);
@@ -109,8 +115,13 @@ export class Engine {
                 uStyle: { value: 0.0 },
                 uMousePos: { value: new THREE.Vector3(0, 0, 0) }
             },
-            vertexShader, fragmentShader,
-            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, vertexColors: true
+            vertexShader,
+            fragmentShader,
+            blending: THREE.AdditiveBlending,
+            depthTest: true,      // Enable depth testing for proper z-ordering
+            depthWrite: false,    // Don't write to depth buffer (particles are transparent)
+            transparent: true,
+            vertexColors: true
         });
 
         const initialPos = Generators.getUniverse(count);
