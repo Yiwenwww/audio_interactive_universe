@@ -6,5 +6,5 @@ export default defineConfig({
     plugins: [react()],
     // For GitHub Pages deployment at username.github.io/repository-name
     // Change '/audio_universe/' to '/' if deploying to username.github.io (user/org page)
-    base: '/audio_universe/',
+    base: '/audio_interactive_universe/',
 })
