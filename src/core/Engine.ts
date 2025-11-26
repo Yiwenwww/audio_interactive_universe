@@ -457,16 +457,14 @@ export class Engine {
     }
 
     // Touch Handling
+    lastTapTime: number = 0;
+
     onTouchStart(event: TouchEvent) {
         if ((event.target as HTMLElement).closest('#hologram-ui')) return;
 
         // Gesture Logic
         if (event.touches.length === 2) {
             // 2-finger tap: Cycle Style (Tab)
-            // We need to trigger the UI update externally, but for now we can just cycle internal state if needed.
-            // Ideally, we dispatch a custom event or use a callback.
-            // Since we can't easily callback to React from here without passing a function, 
-            // we will dispatch a keyboard event to simulate the hotkey!
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
             event.preventDefault();
         } else if (event.touches.length === 3) {
@@ -475,20 +473,39 @@ export class Engine {
             event.preventDefault();
         }
 
-        if (this.xyMode) {
-            this.isPinching = true;
-            this.audioManager.setDistortion(100);
+        // Double Tap Detection for "Click" Effect (Pinch/Distortion)
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - this.lastTapTime;
+
+        if (tapLength < 300 && tapLength > 0) {
+            // Double Tap Detected!
+            if (this.xyMode) {
+                this.isPinching = true;
+                this.audioManager.setDistortion(100);
+            }
+            event.preventDefault(); // Prevent zoom
+        } else {
+            // Single Tap / Drag Start
+            // Do NOT trigger pinch here, just update position in onTouchMove
         }
+        this.lastTapTime = currentTime;
     }
 
     onTouchMove(event: TouchEvent) {
         if (event.touches.length > 0) {
             const touch = event.touches[0];
             this.mouseVector.x = (touch.clientX / window.innerWidth) * 2 - 1;
-            this.mouseVector.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+            this.mouseVector.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
             if (this.xyMode) {
                 this.updateAudioModulation(touch.clientX, touch.clientY);
+            }
+
+            // Theremin Control
+            if (this.audioManager.isThereminActive) {
+                const freq = 200 + (touch.clientX / window.innerWidth) * 800;
+                const vol = 1.0 - (touch.clientY / window.innerHeight);
+                this.audioManager.updateTheremin(freq, Math.max(0, Math.min(1, vol)));
             }
         }
     }

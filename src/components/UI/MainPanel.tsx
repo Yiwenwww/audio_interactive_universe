@@ -16,16 +16,19 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
     // Local state for UI feedback
     const [particleCount, setParticleCount] = useState(20000);
     const [simSpeed, setSimSpeed] = useState(1.0);
-    const [rotationSpeed, setRotationSpeed] = useState(1.0);
+    const [rotationSpeed, setRotationSpeed] = useState(2.0); // Increased initial rotation speed
     const [morphSpeed, setMorphSpeed] = useState(0.05);
     const [pulse, setPulse] = useState(0.0);
     const [autoRotate, setAutoRotate] = useState(true);
     const [autoColor, setAutoColor] = useState(false);
     const [rgb, setRgb] = useState({ r: 255, g: 255, b: 255 });
-    const [neuralDensity, setNeuralDensity] = useState(15);
+    const [neuralDensity, setNeuralDensity] = useState(0); // Initial neural density set to 0
     const [particleSize, setParticleSize] = useState(6.0);
     const [micActive, setMicActive] = useState(false);
     const [xyMode, setXyMode] = useState(false);
+    const [tabCaptureActive, setTabCaptureActive] = useState(false); // Track tab audio capture
+    const [thereminActive, setThereminActive] = useState(false); // Track Theremin mode
+    const [isAudioPlaying, setIsAudioPlaying] = useState(false); // Track play/pause state
 
     // Lists for cycling
     const renderStyles = ['Universe', 'Ink', 'Oil', 'Sketch', 'Forest', 'Ocean', 'Fire', 'Cell'];
@@ -33,6 +36,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
 
     const [currentStyle, setCurrentStyle] = useState('Universe');
     const [currentEffect, setCurrentEffect] = useState('Particle');
+    const [currentShape, setCurrentShape] = useState('Sphere'); // Track selected shape for button highlighting
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -125,6 +129,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
 
     const handleShape = (name: string) => {
         console.log('MainPanel: handleShape clicked', name);
+        setCurrentShape(name); // Update selected shape state
         engine.morphTo(name);
     };
 
@@ -239,13 +244,83 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                             }}
                         />
                     </div>
+
+                    {/* Play/Pause Button */}
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={() => {
+                                const nowPlaying = engine.audioManager.togglePlayPause();
+                                setIsAudioPlaying(nowPlaying);
+                            }}
+                            style={{
+                                fontSize: 10, color: isAudioPlaying ? '#000' : '#0ff',
+                                background: isAudioPlaying ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(0, 255, 255, 0.3)',
+                                padding: '6px 12px', cursor: 'pointer', flexGrow: 1,
+                                textTransform: 'uppercase', transition: 'all 0.2s'
+                            }}
+                        >
+                            {isAudioPlaying ? '❚❚ PAUSE' : '▶ PLAY'}
+                        </button>
+                    </div>
+
                     <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: 9, color: '#0ff' }}>EXT. SOURCE DETECT</span>
+                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(BROWSER TAB AUDIO)</span>
+                        </div>
+                        <Toggle label="" active={tabCaptureActive} onToggle={async () => {
+                            if (!tabCaptureActive) {
+                                const success = await engine.audioManager.setupTabCapture();
+                                setTabCaptureActive(success);
+                                if (success) {
+                                    setMicActive(false); // Turn off mic if tab capture enabled
+                                }
+                            } else {
+                                engine.audioManager.stopTabCapture();
+                                setTabCaptureActive(false);
+                            }
+                        }} />
+                    </div>
+
+                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: 9, color: '#0ff' }}>LIVE AUDIO DETECT</span>
+                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(MIC / MOBILE)</span>
                         </div>
                         <Toggle label="" active={micActive} onToggle={async () => {
                             const active = await engine.audioManager.toggleMic();
                             setMicActive(active);
+                            if (active) {
+                                setTabCaptureActive(false); // Turn off tab capture if mic enabled
+                                if (thereminActive) {
+                                    engine.audioManager.stopTheremin();
+                                    setThereminActive(false);
+                                }
+                            }
+                        }} />
+                    </div>
+
+                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: 9, color: '#0ff' }}>THEREMIN MODE</span>
+                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(TOUCH INTERACTIVE)</span>
+                        </div>
+                        <Toggle label="" active={thereminActive} onToggle={async () => {
+                            if (!thereminActive) {
+                                await engine.audioManager.startTheremin();
+                                setThereminActive(true);
+                                setIsAudioPlaying(false); // Sync UI state since audio is paused
+                                // Disable others
+                                setMicActive(false);
+                                if (tabCaptureActive) {
+                                    engine.audioManager.stopTabCapture();
+                                    setTabCaptureActive(false);
+                                }
+                            } else {
+                                engine.audioManager.stopTheremin();
+                                setThereminActive(false);
+                            }
                         }} />
                     </div>
 
@@ -359,19 +434,19 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
             <ControlSection title=">> DIMENSIONAL RECONSTRUCTOR">
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>GEOMETRY</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Universe', 'Heart', 'Mobius', 'Penrose', 'Tornado'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} />)}
+                    {['Universe', 'Heart', 'Mobius', 'Penrose', 'Tornado'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>ORGANIC & LIFE</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Rose', 'Nautilus', 'Lily', 'Lotus', 'Fern', 'Butterfly', 'Jellyfish'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} />)}
+                    {['Rose', 'Nautilus', 'Lily', 'Lotus', 'Fern', 'Butterfly', 'Jellyfish'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>CHAOS ATTRACTORS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Lorenz', 'Rossler', 'Chen', 'Aizawa', 'Dadras'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} />)}
+                    {['Lorenz', 'Rossler', 'Chen', 'Aizawa', 'Dadras'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>FRACTALS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Sierpinski', 'Mandelbulb', 'Menger', 'Julia', 'Clifford', 'DNA', 'Atom'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} />)}
+                    {['Sierpinski', 'Mandelbulb', 'Menger', 'Julia', 'Clifford', 'DNA', 'Atom'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
             </ControlSection>
         </div >
