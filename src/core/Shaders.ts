@@ -102,7 +102,11 @@ export const vertexShader = `
       if(abs(uEffect - 1.0) < 0.1) scale = 2.0; 
       if(abs(uEffect - 3.0) < 0.1) scale = 0.5; 
       
-      gl_PointSize = size * scale * (1.0 + uBass * 1.5) * (300.0 / -mvPosition.z);
+      // Improved point size calculation for better clarity and depth
+      float depth = -mvPosition.z;
+      float sizeAttenuation = 400.0 / max(depth, 1.0); // Prevent division by zero
+      gl_PointSize = size * scale * (1.0 + uBass * 1.2) * sizeAttenuation;
+      gl_PointSize = max(gl_PointSize, 2.0); // Minimum size for visibility
       gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -145,9 +149,10 @@ export const fragmentShader = `
       float alpha = 1.0;
 
       // --- Material Effects ---
-      if (abs(uEffect - 1.0) < 0.1) { // Glass
+      if (abs(uEffect - 1.0) < 0.1) { // Glass - Enhanced clarity
           float rim = smoothstep(0.4, 0.5, dist);
-          alpha = 0.3 + rim * 0.5; 
+          float core = 1.0 - smoothstep(0.0, 0.2, dist);
+          alpha = 0.4 + rim * 0.4 + core * 0.3; // More visible
           if (uPlayColor <= 0.5) finalColor += vec3(0.5, 0.8, 1.0) * rim; 
       } 
       else if (abs(uEffect - 4.0) < 0.1) { // Metal
@@ -203,9 +208,10 @@ export const fragmentShader = `
           finalColor += effectiveTint * core;
       }
       else {
-          // Standard Universe
-          float glow = exp(-dist * dist * 10.0); 
-          alpha = glow;
+          // Standard Universe - Enhanced glow for clarity
+          float glow = exp(-dist * dist * 12.0); // Sharper falloff
+          float core = 1.0 - smoothstep(0.0, 0.3, dist); // Brighter core
+          alpha = mix(glow, 1.0, core * 0.5);
       }
 
       gl_FragColor = vec4(finalColor, alpha);
