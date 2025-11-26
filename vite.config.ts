@@ -4,5 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [react()],
-    base: './', // Use relative paths for GitHub Pages compatibility
+    // For GitHub Pages deployment at username.github.io/repository-name
+    // Change '/audio_universe/' to '/' if deploying to username.github.io (user/org page)
+    base: '/audio_universe/',
 })
