@@ -462,6 +462,8 @@ export class Engine {
     onTouchStart(event: TouchEvent) {
         if ((event.target as HTMLElement).closest('#hologram-ui')) return;
 
+        const currentTime = new Date().getTime();
+
         // Gesture Logic
         if (event.touches.length === 2) {
             // 2-finger tap: Cycle Style (Tab)
@@ -474,7 +476,12 @@ export class Engine {
         }
 
         // Double Tap Detection for "Click" Effect (Pinch/Distortion)
-        const currentTime = new Date().getTime();
+        // STRICTLY ignore if more than 1 finger is present
+        if (event.touches.length > 1) {
+            this.lastTapTime = 0; // Reset tap timer to prevent accidental double tap after gesture
+            return;
+        }
+
         const tapLength = currentTime - this.lastTapTime;
 
         if (tapLength < 300 && tapLength > 0) {

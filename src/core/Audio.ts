@@ -9,16 +9,13 @@ export class AudioManager {
     freqData: Uint8Array | null = null;
     timeData: Uint8Array | null = null;
 
-    micStream: MediaStream | null = null;
-    tabStream: MediaStream | null = null; // For tab audio capture
     audioElement: HTMLAudioElement | null = null; // Track audio element for control
-    isMicActive = false;
     isFilePlaying = false;
-    isTabCapture = false; // Track if using tab audio capture
 
     // Theremin
     oscillator: OscillatorNode | null = null;
     thereminGain: GainNode | null = null;
+    thereminFilter: BiquadFilterNode | null = null; // New filter for synth sweep
     isThereminActive = false;
 
     constructor() { }
@@ -69,93 +66,6 @@ export class AudioManager {
         this.source.connect(this.gainNode!);
         this.analyser!.connect(this.ctx.destination);
         this.isFilePlaying = true;
-        this.isMicActive = false;
-        this.isTabCapture = false;
-    }
-
-    async toggleMic(): Promise<boolean> {
-        this.initContext();
-        if (!this.ctx) return false;
-
-        if (!this.isMicActive) {
-            await this.resume();
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                this.micStream = stream;
-                if (this.source) this.source.disconnect();
-
-                this.source = this.ctx.createMediaStreamSource(stream);
-                this.source.connect(this.gainNode!);
-                // Do NOT connect to destination to avoid feedback loop
-
-                this.isMicActive = true;
-                this.isFilePlaying = false;
-                return true;
-            } catch (err) {
-                console.error("Mic Error:", err);
-                return false;
-            }
-        } else {
-            if (this.micStream) {
-                this.micStream.getTracks().forEach(track => track.stop());
-                this.micStream = null;
-            }
-            if (this.source) {
-                this.source.disconnect();
-                this.source = null;
-            }
-            this.isMicActive = false;
-            return false;
-        }
-    }
-
-    async setupTabCapture(): Promise<boolean> {
-        this.initContext();
-        if (!this.ctx) return false;
-
-        await this.resume();
-
-        try {
-            // Request tab audio capture (works for browser tabs playing audio)
-            const stream = await (navigator.mediaDevices as any).getDisplayMedia({
-                audio: true,
-                video: true // Required by some browsers even if we only want audio
-            });
-
-            // Get only audio tracks
-            const audioTracks = stream.getAudioTracks();
-            if (audioTracks.length === 0) {
-                console.error("No audio track in captured tab");
-                return false;
-            }
-
-            this.tabStream = stream;
-            if (this.source) this.source.disconnect();
-
-            this.source = this.ctx.createMediaStreamSource(stream);
-            this.source.connect(this.gainNode!);
-            // Don't connect to destination to avoid audio playback
-
-            this.isTabCapture = true;
-            this.isFilePlaying = false;
-            this.isMicActive = false;
-            return true;
-        } catch (err) {
-            console.error("Tab Capture Error:", err);
-            return false;
-        }
-    }
-
-    stopTabCapture() {
-        if (this.tabStream) {
-            this.tabStream.getTracks().forEach(track => track.stop());
-            this.tabStream = null;
-        }
-        if (this.source) {
-            this.source.disconnect();
-            this.source = null;
-        }
-        this.isTabCapture = false;
     }
 
     // --- Theremin Synthesis ---
@@ -170,28 +80,25 @@ export class AudioManager {
             this.isFilePlaying = false; // Mark as not playing for analysis
         }
 
-        // Stop mic/tab capture as they conflict with output
-        if (this.micStream) {
-            this.micStream.getTracks().forEach(track => track.stop());
-            this.micStream = null;
-            this.isMicActive = false;
-        }
-        if (this.tabStream) {
-            this.tabStream.getTracks().forEach(track => track.stop());
-            this.tabStream = null;
-            this.isTabCapture = false;
-        }
-
-        // Create Oscillator
+        // Create Oscillator & Filter
         this.oscillator = this.ctx.createOscillator();
         this.thereminGain = this.ctx.createGain();
+        this.thereminFilter = this.ctx.createBiquadFilter();
 
-        this.oscillator.type = 'sine';
-        this.oscillator.frequency.value = 440; // Start at A4
+        // Synth Setup: Sawtooth wave for rich harmonics
+        this.oscillator.type = 'sawtooth';
+        this.oscillator.frequency.value = 440;
+
+        // Filter Setup: Lowpass for "wah" effect
+        this.thereminFilter.type = 'lowpass';
+        this.thereminFilter.Q.value = 10; // High resonance for "synth" sound
+        this.thereminFilter.frequency.value = 1000;
+
         this.thereminGain.gain.value = 0; // Start silent
 
-        // Connect: Osc -> Gain -> Main Gain -> Distortion -> Filter -> Analyser -> Destination
-        this.oscillator.connect(this.thereminGain);
+        // Connect: Osc -> Filter -> Gain -> Main Gain
+        this.oscillator.connect(this.thereminFilter);
+        this.thereminFilter.connect(this.thereminGain);
         this.thereminGain.connect(this.gainNode!);
 
         // Ensure main path connects to destination for hearing
@@ -206,8 +113,12 @@ export class AudioManager {
             try {
                 this.oscillator.stop();
                 this.oscillator.disconnect();
-            } catch (e) { /* ignore if already stopped */ }
+            } catch (e) { /* ignore */ }
             this.oscillator = null;
+        }
+        if (this.thereminFilter) {
+            this.thereminFilter.disconnect();
+            this.thereminFilter = null;
         }
         if (this.thereminGain) {
             this.thereminGain.disconnect();
@@ -222,12 +133,18 @@ export class AudioManager {
         if (this.oscillator) {
             this.oscillator.frequency.setTargetAtTime(frequency, this.ctx.currentTime, 0.05);
         }
+        if (this.thereminFilter) {
+            // Map volume (Y-axis) to Filter Cutoff as well for "sweep" effect
+            // Low volume = Closed filter (muffled), High volume = Open filter (bright)
+            const minCutoff = 100;
+            const maxCutoff = 8000;
+            const cutoff = minCutoff + (maxCutoff - minCutoff) * volume;
+            this.thereminFilter.frequency.setTargetAtTime(cutoff, this.ctx.currentTime, 0.05);
+        }
         if (this.thereminGain) {
             this.thereminGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
         }
     }
-
-    // Play/Pause controls for file playback
     play() {
         if (this.audioElement && !this.audioElement.paused) return; // Already playing
         this.audioElement?.play();
@@ -269,7 +186,7 @@ export class AudioManager {
         const freqData = this.freqData;
         const timeData = this.timeData;
 
-        if (analyser && freqData && timeData && (this.isFilePlaying || this.isMicActive || this.isTabCapture || this.isThereminActive)) {
+        if (analyser && freqData && timeData && (this.isFilePlaying || this.isThereminActive)) {
             // @ts-ignore
             analyser.getByteFrequencyData(freqData);
             // @ts-ignore

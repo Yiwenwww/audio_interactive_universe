@@ -24,9 +24,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
     const [rgb, setRgb] = useState({ r: 255, g: 255, b: 255 });
     const [neuralDensity, setNeuralDensity] = useState(0); // Initial neural density set to 0
     const [particleSize, setParticleSize] = useState(6.0);
-    const [micActive, setMicActive] = useState(false);
     const [xyMode, setXyMode] = useState(false);
-    const [tabCaptureActive, setTabCaptureActive] = useState(false); // Track tab audio capture
     const [thereminActive, setThereminActive] = useState(false); // Track Theremin mode
     const [isAudioPlaying, setIsAudioPlaying] = useState(false); // Track play/pause state
 
@@ -264,42 +262,9 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                         </button>
                     </div>
 
-                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 9, color: '#0ff' }}>EXT. SOURCE DETECT</span>
-                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(BROWSER TAB AUDIO)</span>
-                        </div>
-                        <Toggle label="" active={tabCaptureActive} onToggle={async () => {
-                            if (!tabCaptureActive) {
-                                const success = await engine.audioManager.setupTabCapture();
-                                setTabCaptureActive(success);
-                                if (success) {
-                                    setMicActive(false); // Turn off mic if tab capture enabled
-                                }
-                            } else {
-                                engine.audioManager.stopTabCapture();
-                                setTabCaptureActive(false);
-                            }
-                        }} />
-                    </div>
 
-                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 9, color: '#0ff' }}>LIVE AUDIO DETECT</span>
-                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(MIC / MOBILE)</span>
-                        </div>
-                        <Toggle label="" active={micActive} onToggle={async () => {
-                            const active = await engine.audioManager.toggleMic();
-                            setMicActive(active);
-                            if (active) {
-                                setTabCaptureActive(false); // Turn off tab capture if mic enabled
-                                if (thereminActive) {
-                                    engine.audioManager.stopTheremin();
-                                    setThereminActive(false);
-                                }
-                            }
-                        }} />
-                    </div>
+
+
 
                     <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -312,11 +277,6 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                                 setThereminActive(true);
                                 setIsAudioPlaying(false); // Sync UI state since audio is paused
                                 // Disable others
-                                setMicActive(false);
-                                if (tabCaptureActive) {
-                                    engine.audioManager.stopTabCapture();
-                                    setTabCaptureActive(false);
-                                }
                             } else {
                                 engine.audioManager.stopTheremin();
                                 setThereminActive(false);
