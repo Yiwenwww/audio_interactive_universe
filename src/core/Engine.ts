@@ -68,7 +68,9 @@ export class Engine {
         this.scene.fog = new THREE.FogExp2(0x000000, 0.001);
 
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 4000);
-        this.camera.position.z = 1000;
+        // Adjust camera distance based on screen width (Mobile Optimization)
+        const isMobile = window.innerWidth < 768;
+        this.camera.position.z = isMobile ? 1500 : 1000;
 
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,          // Smooth edges
@@ -480,6 +482,10 @@ export class Engine {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Update camera distance on resize
+        const isMobile = window.innerWidth < 768;
+        this.camera.position.z = isMobile ? 1500 : 1000;
     }
 
     dispose() {
