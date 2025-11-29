@@ -46,6 +46,10 @@ export class Engine {
     lastTap = 0;
     isMouseDown = false;
 
+    // FPS & Animation
+    frames = 0;
+    lastTime = 0;
+
     styleList = ['Universe', 'Ink', 'Oil', 'Forest', 'Sketch', 'Cell', 'Ocean', 'Fire'];
     materialList = ['Particle', 'Glass', 'Plant', 'Silk', 'Metal', 'Rock'];
     currentStyleIndex = 0;
@@ -602,93 +606,152 @@ export class Engine {
         const dt = 60 * delta; // Normalize to 60 FPS speed
 
         const time = performance.now();
+        this.frames++;
+        if (time >= this.lastTime + 1000) {
+            const fpsElement = document.getElementById('fps-counter');
+            if (fpsElement) {
+                fpsElement.innerText = Math.round((this.frames * 1000) / (time - this.lastTime)).toString();
+            }
+            this.lastTime = time;
+            this.frames = 0;
+        }
+
         TWEEN.update();
 
+        // --- MORPHING LOGIC (CPU) ---
         if (this.isMorphing) {
+            const speed = this.morphSpeed;
             for (let i = 0; i < this.particleCount * 3; i++) {
                 const diff = this.targetPositions[i] - this.currentPositions[i];
                 if (Math.abs(diff) > 0.1) {
-                    this.currentPositions[i] += diff * this.morphSpeed * dt;
+                    this.currentPositions[i] += diff * speed * dt;
                 } else {
-                    this.currentPositions[i] = this.targetPositions[i];
+                    this.currentPositions[i] = this.targetPositions[i]; // Snap
                 }
             }
-            // Wave/Pinch logic
-            let waveFactor = 0;
-            if (this.isPinching) waveFactor += 0.5;
-            if (this.material) {
-                this.material.uniforms.uWave.value = THREE.MathUtils.lerp(this.material.uniforms.uWave.value, waveFactor, 0.1);
-            }
             if (this.geometry) this.geometry.attributes.position.needsUpdate = true;
-            this.syncLines();
+        }
+
+        // Always update lines if visible, they need to follow particles
+        // Note: updateLines() isn't fully implemented in the snippet, but syncLines() is.
+        // We'll use syncLines() which updates line positions based on particles.
+        this.syncLines();
+
+        let bassFactor = 0;
+        let trebleFactor = 0;
+        let waveFactor = 0;
+
+        const analysis = this.audioManager.getAnalysis();
+        const isFilePlaying = this.audioManager.isFilePlaying;
+        // We don't have isMicActive explicitly tracked in AudioManager yet, but getAnalysis returns null if not active/playing
+        // The snippet uses (isFilePlaying || isMicActive). We'll rely on analysis being present.
+
+        if (analysis && this.material) {
+            const { freq, time: timeData } = analysis;
+
+            // Mic/Signal Status Logic (Simplified)
+            // In original code this updated a DOM element. We can keep it if the element exists.
+            let sum = 0;
+            for (let i = 0; i < freq.length; i++) sum += freq[i];
+            const avg = sum / freq.length;
+            const statusEl = document.getElementById('ext-status');
+            if (statusEl) {
+                if (avg > 10) {
+                    statusEl.innerText = "SIGNAL LOCKED";
+                    statusEl.style.color = "#0f0";
+                    statusEl.style.textShadow = "0 0 5px #0f0";
+                } else {
+                    statusEl.innerText = "SCANNING...";
+                    statusEl.style.color = "#ff0";
+                    statusEl.style.textShadow = "none";
+                }
+            }
+
+            // Audio Factors
+            let bassSum = 0; const bassLimit = Math.floor(freq.length * 0.1);
+            let trebleSum = 0; const trebleStart = Math.floor(freq.length * 0.6);
+
+            for (let i = 0; i < freq.length; i++) {
+                if (i < bassLimit) bassSum += freq[i];
+                else if (i > trebleStart) trebleSum += freq[i];
+            }
+            let timeSum = 0;
+            for (let i = 0; i < timeData.length; i++) timeSum += Math.abs(timeData[i] - 128);
+
+            bassFactor = (bassSum / bassLimit) / 255;
+            trebleFactor = (trebleSum / (freq.length - trebleStart)) / 255;
+            waveFactor = (timeSum / timeData.length) / 64;
+
+            if (this.xyMode && this.isPinching) waveFactor += 0.5;
+
+            bassFactor *= this.bassSensitivity;
+            trebleFactor *= this.trebleSensitivity;
+
+            this.material.uniforms.uBass.value = THREE.MathUtils.lerp(this.material.uniforms.uBass.value, bassFactor, 0.1);
+            this.material.uniforms.uTreble.value = THREE.MathUtils.lerp(this.material.uniforms.uTreble.value, trebleFactor, 0.1);
+            this.material.uniforms.uWave.value = THREE.MathUtils.lerp(this.material.uniforms.uWave.value, waveFactor > 0.1 ? waveFactor : 0, 0.1);
+
+            let targetModX = 0.5;
+            let targetModY = 0.0;
+            if (this.xyMode) {
+                targetModX = this.mouseVector.x * 0.5 + 0.5;
+                targetModY = this.mouseVector.y * 0.5 + 0.5;
+            }
+            this.material.uniforms.uModX.value = THREE.MathUtils.lerp(this.material.uniforms.uModX.value, targetModX, 0.1);
+            this.material.uniforms.uModY.value = THREE.MathUtils.lerp(this.material.uniforms.uModY.value, targetModY, 0.1);
 
         } else if (this.pulseIntensity > 0 && this.material) {
             const pulse = Math.sin(time * 0.003 * (1 + this.pulseIntensity)) * 0.5 + 0.5;
             this.material.uniforms.uBass.value = pulse * this.pulseIntensity * 0.5;
-        }
-
-        // Audio Analysis & XY Mode Logic
-        const analysis = this.audioManager.getAnalysis();
-        if (analysis && this.material) {
-            const { freq } = analysis;
-
-            // Bass (Low Freqs)
-            let bassSum = 0; const bassLimit = Math.floor(freq.length * 0.1);
-            for (let i = 0; i < bassLimit; i++) bassSum += freq[i];
-            const bassFactor = (bassSum / bassLimit) / 255;
-
-            // Treble (High Freqs)
-            let trebleSum = 0; const trebleStart = Math.floor(freq.length * 0.7);
-            for (let i = trebleStart; i < freq.length; i++) trebleSum += freq[i];
-            const trebleFactor = (trebleSum / (freq.length - trebleStart)) / 255;
-
-            this.material.uniforms.uBass.value = THREE.MathUtils.lerp(this.material.uniforms.uBass.value, bassFactor * this.bassSensitivity, 0.08);
-            this.material.uniforms.uTreble.value = THREE.MathUtils.lerp(this.material.uniforms.uTreble.value, trebleFactor * this.trebleSensitivity, 0.03);
-
-            // Restore Original Logic: Audio also drives the Wave/Ripple effect
-            // If significant treble/bass, trigger wave
-            if (trebleFactor > 0.4) {
-                const waveTarget = (trebleFactor - 0.4) * 1.5; // Scale up slightly less
-                this.material.uniforms.uWave.value = THREE.MathUtils.lerp(this.material.uniforms.uWave.value, waveTarget, 0.02);
-            } else {
-                // Smoothly decay wave if below threshold
-                this.material.uniforms.uWave.value = THREE.MathUtils.lerp(this.material.uniforms.uWave.value, 0, 0.02);
-            }
-        }
-
-        // XY Mode Modulation (Independent of Audio Analysis)
-        if (this.xyMode && this.material) {
-            this.material.uniforms.uModX.value = this.mouseVector.x * 0.5 + 0.5; // 0..1
-            this.material.uniforms.uModY.value = this.mouseVector.y * 0.5 + 0.5; // 0..1
+            this.material.uniforms.uTreble.value = 0.0;
+            this.material.uniforms.uWave.value = 0.0;
         }
 
         if (this.material) {
             this.material.uniforms.uTime.value = time * 0.001;
             this.material.uniforms.uMousePos.value.copy(this.worldMouse);
-
-            // Sync line color with cycle if active
-            if (this.autoColorCycle && this.linesMesh) {
-                const r = 0.5 + 0.5 * Math.cos(time * 0.0005 + 0.0);
-                const g = 0.5 + 0.5 * Math.cos(time * 0.0005 + 2.0);
-                const b = 0.5 + 0.5 * Math.cos(time * 0.0005 + 4.0);
-                (this.linesMesh.material as THREE.LineBasicMaterial).color.setRGB(r, g, b);
-            }
         }
+
+        // Sync Cursor
+        if (this.cursorMaterial && this.material) {
+            this.cursorMaterial.uniforms.uBass.value = this.material.uniforms.uBass.value;
+            this.cursorMaterial.uniforms.uTreble.value = this.material.uniforms.uTreble.value;
+            this.cursorMaterial.uniforms.uWave.value = this.material.uniforms.uWave.value;
+            this.cursorMaterial.uniforms.uModX.value = this.material.uniforms.uModX.value;
+            this.cursorMaterial.uniforms.uModY.value = this.material.uniforms.uModY.value;
+            this.cursorMaterial.uniforms.uTime.value = this.material.uniforms.uTime.value;
+            this.cursorMaterial.uniforms.uPlayColor.value = this.material.uniforms.uPlayColor.value;
+            this.cursorMaterial.uniforms.uEffect.value = this.material.uniforms.uEffect.value;
+            this.cursorMaterial.uniforms.uStyle.value = this.material.uniforms.uStyle.value;
+            this.cursorMaterial.uniforms.uColorTint.value.copy(this.material.uniforms.uColorTint.value);
+            this.cursorMaterial.uniforms.size.value = this.material.uniforms.size.value * 1.5;
+            this.cursorMaterial.blending = this.material.blending;
+        }
+
+        // Rotation Logic
+        const rotationSpeed = 0.001 * this.simSpeed;
 
         if (this.autoRotate && this.particles) {
-            this.particles.rotation.y += 0.002 * this.rotationSpeed * dt;
-            if (this.linesMesh) this.linesMesh.rotation.y += 0.002 * this.rotationSpeed * dt;
+            const extraSpeed = isFilePlaying ? 0.005 : 0;
+            this.particles.rotation.y += (0.002 + extraSpeed) * dt;
+            if (this.linesMesh) this.linesMesh.rotation.y += (0.002 + extraSpeed) * dt;
         }
 
-        // Mouse Rotation (Camera Orbit)
+        if (this.particles) {
+            this.particles.rotation.y += rotationSpeed * dt;
+            this.particles.rotation.z += rotationSpeed * 0.2 * dt;
+        }
+
+        this.updateCursor();
+
+        // Camera Orbit (Mouse)
         const targetCamX = this.mouseVector.x * 300;
         const targetCamY = this.mouseVector.y * 300;
 
-        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.05;
-        this.camera.position.y += (targetCamY - this.camera.position.y) * 0.05;
+        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.05 * this.simSpeed;
+        this.camera.position.y += (-targetCamY - this.camera.position.y) * 0.05 * this.simSpeed;
         this.camera.lookAt(this.scene.position);
 
-        this.updateCursor();
         this.renderer.render(this.scene, this.camera);
     }
 }
