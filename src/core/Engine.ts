@@ -39,6 +39,7 @@ export class Engine {
     pulseIntensity = 0.0;
     autoColorCycle = false;
     isDisposed = false;
+    clock = new THREE.Clock();
 
     // Audio
     audioManager: AudioManager;
@@ -331,46 +332,87 @@ export class Engine {
             this.material.needsUpdate = true;
         }
 
+        // Handle Light Mode Class
+        const body = document.body;
+        body.classList.remove('light-mode');
+
         if (name === 'Universe') {
-            this.renderer.setClearColor(0x000000); this.scene.fog!.color.setHex(0x000000);
+            this.renderer.setClearColor(0x000000);
+            this.scene.fog!.color.setHex(0x000000);
+            (this.scene.fog as THREE.FogExp2).density = 0.001;
             this.material!.blending = THREE.AdditiveBlending;
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x00ffff); (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending; }
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x00ffff);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
             this.material!.uniforms.uColorTint.value.setRGB(1, 1, 1);
         } else if (name === 'Ink') {
-            this.renderer.setClearColor(0xF5E9D3); this.scene.fog!.color.setHex(0xF5E9D3);
+            body.classList.add('light-mode');
+            this.renderer.setClearColor(0xF5E9D3);
+            this.scene.fog!.color.setHex(0xF5E9D3);
+            (this.scene.fog as THREE.FogExp2).density = 0.0015;
             this.material!.blending = THREE.NormalBlending;
             this.material!.uniforms.uColorTint.value.setRGB(0.3, 0.4, 0.5);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x554433); (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending; }
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x554433);
+                (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending;
+            }
         } else if (name === 'Oil') {
-            this.renderer.setClearColor(0x100500); this.scene.fog!.color.setHex(0x100500);
+            this.renderer.setClearColor(0x0B0E28);
+            this.scene.fog!.color.setHex(0x0B0E28);
+            (this.scene.fog as THREE.FogExp2).density = 0.001;
             this.material!.blending = THREE.NormalBlending;
-            this.material!.uniforms.uColorTint.value.setRGB(0.8, 0.6, 0.2);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x886622); (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending; }
+            this.material!.uniforms.uColorTint.value.setRGB(1.0, 0.8, 0.2);
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0xFFA500);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
         } else if (name === 'Forest') {
-            this.renderer.setClearColor(0x051005); this.scene.fog!.color.setHex(0x051005);
+            this.renderer.setClearColor(0x051a05);
+            this.scene.fog!.color.setHex(0x051a05);
             this.material!.blending = THREE.AdditiveBlending;
-            this.material!.uniforms.uColorTint.value.setRGB(0.2, 0.8, 0.2);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x228822); }
+            this.material!.uniforms.uColorTint.value.setRGB(0.4, 1.0, 0.5);
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x55ff55);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
+        } else if (name === 'Ocean') {
+            this.renderer.setClearColor(0x00051a);
+            this.scene.fog!.color.setHex(0x00051a);
+            this.material!.blending = THREE.AdditiveBlending;
+            this.material!.uniforms.uColorTint.value.setRGB(0.0, 0.6, 1.0);
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x0088ff);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
+        } else if (name === 'Fire') {
+            this.renderer.setClearColor(0x1a0500);
+            this.scene.fog!.color.setHex(0x1a0500);
+            this.material!.blending = THREE.AdditiveBlending;
+            this.material!.uniforms.uColorTint.value.setRGB(1.0, 0.4, 0.0);
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0xff4400);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
+        } else if (name === 'Cell') {
+            this.renderer.setClearColor(0x000000);
+            this.scene.fog!.color.setHex(0x000000);
+            this.material!.blending = THREE.AdditiveBlending;
+            this.material!.uniforms.uColorTint.value.setRGB(0.8, 0.0, 1.0);
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x00ffaa);
+                (this.linesMesh.material as THREE.Material).blending = THREE.AdditiveBlending;
+            }
         } else if (name === 'Sketch') {
-            this.renderer.setClearColor(0xeeeeee); this.scene.fog!.color.setHex(0xeeeeee);
+            body.classList.add('light-mode');
+            this.renderer.setClearColor(0xffffff);
+            this.scene.fog!.color.setHex(0xffffff);
             this.material!.blending = THREE.NormalBlending;
             this.material!.uniforms.uColorTint.value.setRGB(0.1, 0.1, 0.1);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x333333); (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending; }
-        } else if (name === 'Cell') {
-            this.renderer.setClearColor(0x000000); this.scene.fog!.color.setHex(0x000000);
-            this.material!.blending = THREE.AdditiveBlending;
-            this.material!.uniforms.uColorTint.value.setRGB(0.2, 1.0, 0.5);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x00ff88); }
-        } else if (name === 'Ocean') {
-            this.renderer.setClearColor(0x000510); this.scene.fog!.color.setHex(0x000510);
-            this.material!.blending = THREE.AdditiveBlending;
-            this.material!.uniforms.uColorTint.value.setRGB(0.1, 0.4, 1.0);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x0044ff); }
-        } else if (name === 'Fire') {
-            this.renderer.setClearColor(0x100000); this.scene.fog!.color.setHex(0x100000);
-            this.material!.blending = THREE.AdditiveBlending;
-            this.material!.uniforms.uColorTint.value.setRGB(1.0, 0.3, 0.0);
-            if (this.linesMesh) { (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0xff4400); }
+            if (this.linesMesh) {
+                (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x333333);
+                (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending;
+            }
         }
     }
 
@@ -527,6 +569,10 @@ export class Engine {
     animate() {
         if (this.isDisposed) return;
         requestAnimationFrame(this.animate.bind(this));
+
+        const delta = this.clock.getDelta();
+        const dt = 60 * delta; // Normalize to 60 FPS speed
+
         const time = performance.now();
         TWEEN.update();
 
@@ -534,7 +580,7 @@ export class Engine {
             for (let i = 0; i < this.particleCount * 3; i++) {
                 const diff = this.targetPositions[i] - this.currentPositions[i];
                 if (Math.abs(diff) > 0.1) {
-                    this.currentPositions[i] += diff * this.morphSpeed;
+                    this.currentPositions[i] += diff * this.morphSpeed * dt;
                 } else {
                     this.currentPositions[i] = this.targetPositions[i];
                 }
@@ -602,8 +648,8 @@ export class Engine {
         }
 
         if (this.autoRotate && this.particles) {
-            this.particles.rotation.y += 0.002 * this.rotationSpeed;
-            if (this.linesMesh) this.linesMesh.rotation.y += 0.002 * this.rotationSpeed;
+            this.particles.rotation.y += 0.002 * this.rotationSpeed * dt;
+            if (this.linesMesh) this.linesMesh.rotation.y += 0.002 * this.rotationSpeed * dt;
         }
 
         // Mouse Rotation (Camera Orbit)
@@ -618,5 +664,6 @@ export class Engine {
         this.renderer.render(this.scene, this.camera);
     }
 }
+
 
 
