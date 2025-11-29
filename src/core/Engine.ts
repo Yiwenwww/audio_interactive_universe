@@ -729,17 +729,29 @@ export class Engine {
         }
 
         // Rotation Logic
-        const rotationSpeed = 0.001 * this.simSpeed;
+        // Base speed from slider (this.rotationSpeed)
+        // Audio boost based on bassFactor (0..1)
+
+        let currentRotationSpeed = this.rotationSpeed;
+
+        if (isFilePlaying) {
+            // When playing, base speed + audio boost
+            // We map bassFactor (0..1) to a speed boost
+            // Example: boost adds up to 2.0x extra speed
+            const audioBoost = bassFactor * 2.0;
+            currentRotationSpeed = this.rotationSpeed + audioBoost;
+        }
 
         if (this.autoRotate && this.particles) {
-            const extraSpeed = isFilePlaying ? 0.005 : 0;
-            this.particles.rotation.y += (0.002 + extraSpeed) * dt;
-            if (this.linesMesh) this.linesMesh.rotation.y += (0.002 + extraSpeed) * dt;
+            // Original constant: 0.002
+            // We apply the currentRotationSpeed as a multiplier
+            this.particles.rotation.y += 0.002 * currentRotationSpeed * dt;
+            if (this.linesMesh) this.linesMesh.rotation.y += 0.002 * currentRotationSpeed * dt;
         }
 
         if (this.particles) {
-            this.particles.rotation.y += rotationSpeed * dt;
-            this.particles.rotation.z += rotationSpeed * 0.2 * dt;
+            this.particles.rotation.y += currentRotationSpeed * 0.001 * dt;
+            this.particles.rotation.z += currentRotationSpeed * 0.0002 * dt;
         }
 
         this.updateCursor();
