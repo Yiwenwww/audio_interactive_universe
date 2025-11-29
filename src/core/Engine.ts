@@ -764,12 +764,12 @@ export class Engine {
         this.updateCursor();
 
         // Camera Orbit (Mouse)
-        // Enhanced Sensitivity: Increased range (600) and speed (0.1)
-        const targetCamX = this.mouseVector.x * 600;
-        const targetCamY = this.mouseVector.y * 600;
+        // Refined Sensitivity: Range 450 (balanced), Speed 0.04 (smoother/weightier)
+        const targetCamX = this.mouseVector.x * 450;
+        const targetCamY = this.mouseVector.y * 450;
 
-        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.1 * this.simSpeed;
-        this.camera.position.y += (-targetCamY - this.camera.position.y) * 0.1 * this.simSpeed;
+        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.04 * this.simSpeed;
+        this.camera.position.y += (-targetCamY - this.camera.position.y) * 0.04 * this.simSpeed;
         this.camera.lookAt(this.scene.position);
 
         this.renderer.render(this.scene, this.camera);
