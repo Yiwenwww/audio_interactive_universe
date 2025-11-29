@@ -394,7 +394,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
             <ControlSection title=">> DIMENSIONAL RECONSTRUCTOR">
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>GEOMETRY</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Universe', 'Heart', 'Penrose', 'Tornado'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
+                    {['Universe', 'Heart', 'Penrose', 'Tornado', 'Galaxy'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>ORGANIC & LIFE</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
@@ -402,16 +402,13 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>CHAOS ATTRACTORS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Lorenz', 'Rossler', 'Chen', 'Aizawa', 'Dadras', 'Halvorsen', 'Thomas', 'Sprott', 'FourWing', 'Rikitake', 'MultiChua'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
+                    {['Lorenz', 'Rossler', 'Chen', 'Aizawa', 'Dadras', 'Halvorsen', 'Thomas', 'Sprott', 'FourWing', 'Tsucs2', 'MultiChua'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
                 <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>FRACTALS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Sierpinski', 'Mandelbulb', 'Menger', 'Julia', 'Clifford', 'Kleinian', 'Hopalong'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
+                    {['Sierpinski', 'Mandelbulb', 'Menger', 'Julia', 'Clifford', 'Hopalong'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
                 </div>
-                <div style={{ fontSize: 9, color: '#0ff', margin: '5px 0 2px 0', opacity: 0.7, borderBottom: '1px solid rgba(0,255,255,0.2)' }}>MUSIC FLOW</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {['Galaxy'].map(s => <Tag key={s} label={s} onClick={() => handleShape(s)} selected={currentShape === s} />)}
-                </div>
+
             </ControlSection>
         </div >
     );

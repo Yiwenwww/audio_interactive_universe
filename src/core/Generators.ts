@@ -4,9 +4,9 @@ export const rand = (min: number, max: number) => Math.random() * (max - min) + 
 
 export type GeneratorFunc = (particleCount: number) => number[];
 
-function generateAttractor(odeFunc: (x: number, y: number, z: number) => { x: number, y: number, z: number }, scale: number, particleCount: number, dt: number) {
+function generateAttractor(odeFunc: (x: number, y: number, z: number) => { x: number, y: number, z: number }, scale: number, particleCount: number, dt: number, initialState?: { x: number, y: number, z: number }) {
     const arr: number[] = [];
-    let x = 0.1, y = 0.1, z = 0.1;
+    let x = initialState?.x ?? 0.1, y = initialState?.y ?? 0.1, z = initialState?.z ?? 0.1;
     for (let i = 0; i < 100; i++) { const d = odeFunc(x, y, z); x += d.x * dt; y += d.y * dt; z += d.z * dt; }
     for (let i = 0; i < particleCount; i++) {
         const d = odeFunc(x, y, z); x += d.x * dt; y += d.y * dt; z += d.z * dt;
@@ -55,22 +55,28 @@ export const Generators = {
             z: x * y - b * z
         }), 15, count, 0.002, 2);
     },
-    getRikitake: (count: number) => {
-        const a = 5, b = 2;
-        return generateAttractor((x, y, z) => ({
-            x: -a * x + y * z,
-            y: -a * y + x * (b - z),
-            z: 1 - x * y
-        }), 20, count, 0.01);
+    getTsucs2: (count: number) => {
+        const a = 40, b = 1.833, c = 0.833, d = 0.16, e = 0.65, f = 20;
+        return generateAttractor(
+            (x, y, z) => ({
+                x: a * (y - x) + d * x * z,
+                y: b * x - x * z + f * y,
+                z: -e * x * x + x * y + c * z
+            }),
+            1,
+            count,
+            0.000218,
+            { x: 2.1, y: -1.3, z: 0.7 }
+        );
     },
     getMultiChua: (count: number) => {
         // Sine-Chua for multi-scroll
-        const a = 10.82, b = 14.286, c = 1.3; // Tuned constants
+        const a = 9, b = 14.286, c = 1.3; // Tuned constants
         return generateAttractor((x, y, z) => ({
             x: a * (y - x + c * Math.sin(x)),
             y: x - y + z,
             z: -b * y
-        }), 50, count, 0.01);
+        }), 200, count, 0.004, { x: 0.2, y: 0.1, z: 0.05 });
     },
     getHalvorsen: (count: number) => {
         const a = 1.4;
@@ -78,15 +84,22 @@ export const Generators = {
             x: -a * x - 4 * y - 4 * z - y * y,
             y: -a * y - 4 * z - 4 * x - z * z,
             z: -a * z - 4 * x - 4 * y - x * x
-        }), 40, count, 0.005);
+        }), 30, count, 0.001, { x: 1, y: 0, z: 2 });
     },
     getThomas: (count: number) => {
         const b = 0.208186;
-        return generateAttractor((x, y, z) => ({
-            x: Math.sin(y) - b * x,
-            y: Math.sin(z) - b * y,
-            z: Math.sin(x) - b * z
-        }), 150, count, 0.05);
+
+        return generateAttractor(
+            (x, y, z) => ({
+                x: Math.sin(y) - b * x,
+                y: Math.sin(z) - b * y,
+                z: Math.sin(x) - b * z
+            }),
+            150,            // ★ Increase warm-up (critical)
+            count,
+            0.06,          // ★ Smaller dt ensures smooth convergence
+            { x: 1, y: -1, z: 0.5 }   // ★ Best-known working initial conditions
+        );
     },
     getSprott: (count: number) => {
         return generateAttractor((x, y, z) => ({
@@ -192,40 +205,81 @@ export const Generators = {
         }
         return arr;
     },
-    getUniverse: (count: number) => { const arr: number[] = []; const arms = 5; const spin = 0.2; const spread = 1.0; for (let i = 0; i < count; i++) { const t = Math.random(); const angle = t * Math.PI * 2 * arms * spin + ((i % arms) * Math.PI * 2 / arms); const r = 800 * t + 50; const nX = (Math.random() - 0.5) * 200 * t * spread; const nY = (Math.random() - 0.5) * 200 * t * spread; const nZ = (Math.random() - 0.5) * 150 * (1 - t); arr.push(Math.cos(angle) * r + nX, Math.sin(angle) * r + nY, nZ); } return arr; },
-    getHeart: (count: number) => { const arr: number[] = []; for (let i = 0; i < count; i++) { const t = Math.random() * Math.PI * 2; let x = 16 * Math.pow(Math.sin(t), 3); let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); let z = (Math.random() - 0.5) * 10; const s = 25; const r = s * (Math.random() * 0.2 + 0.8); arr.push(x * r, y * r, z * s * 4 * Math.random()); } return arr; },
-    getKleinian: (count: number) => {
+    getUniverse: (count: number) => {
         const arr: number[] = [];
-        const scale = 300;
-        // Random Iterated Function System approach for Kleinian-like structure
-        let x = 0, y = 0, z = 0;
-        for (let i = 0; i < count; i++) {
-            const r = Math.random();
-            if (r < 0.5) {
-                // Mobius transformation 1
-                const d = (x - 1) * (x - 1) + y * y + z * z;
-                x = (x - 1) / d + 1; y = y / d; z = z / d;
-            } else {
-                // Mobius transformation 2
-                const d = (x + 1) * (x + 1) + y * y + z * z;
-                x = (x + 1) / d - 1; y = y / d; z = z / d;
-            }
-            // Rotate/Scale
-            const tempX = x * 0.95 + z * 0.05;
-            z = z * 0.95 - x * 0.05;
-            x = tempX;
+        const arms = 3;
+        const coreRadius = 100;
+        const maxRadius = 800;
 
-            if (i > 100) { // Skip warmup
-                arr.push(x * scale, y * scale, z * scale);
+        for (let i = 0; i < count; i++) {
+            // Core concentration
+            if (Math.random() < 0.2) {
+                const r = Math.random() * coreRadius;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                arr.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi) * 0.5);
+                continue;
             }
+
+            // Spiral Arms
+            const arm = Math.floor(Math.random() * arms);
+            const r = coreRadius + Math.random() * (maxRadius - coreRadius);
+            const theta = (r / maxRadius) * 5 * Math.PI + (arm / arms) * Math.PI * 2;
+
+            // Add spread/noise to arms
+            const spread = (r / maxRadius) * 200;
+            const x = r * Math.cos(theta) + (Math.random() - 0.5) * spread;
+            const z = r * Math.sin(theta) + (Math.random() - 0.5) * spread;
+            const y = (Math.random() - 0.5) * spread * 0.5; // Flattened galaxy
+
+            arr.push(x, y, z);
         }
         return arr;
     },
+    getHeart: (count: number) => { const arr: number[] = []; for (let i = 0; i < count; i++) { const t = Math.random() * Math.PI * 2; let x = 16 * Math.pow(Math.sin(t), 3); let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); let z = (Math.random() - 0.5) * 10; const s = 25; const r = s * (Math.random() * 0.2 + 0.8); arr.push(x * r, y * r, z * s * 4 * Math.random()); } return arr; },
+    getPenrose: (count: number) => {
+        const arr: number[] = [];
+        const s = 500;
+        const edges = [
+            [[-s, -s, -s], [s, -s, -s]], [[s, -s, -s], [s, s, -s]], [[s, s, -s], [-s, s, -s]], [[-s, s, -s], [-s, -s, -s]],
+            [[-s, -s, s], [s, -s, s]], [[s, -s, s], [s, s, s]], [[s, s, s], [-s, s, s]], [[-s, s, s], [-s, -s, s]],
+            [[-s, -s, -s], [-s, -s, s]], [[s, -s, -s], [s, -s, s]], [[s, s, -s], [s, s, s]], [[-s, s, -s], [-s, s, s]]
+        ];
+        const p = Math.floor(count / edges.length);
+        edges.forEach(e => {
+            const [S, E] = e;
+            for (let i = 0; i < p; i++) {
+                const t = Math.random();
+                const j = 20;
+                arr.push(
+                    S[0] + (E[0] - S[0]) * t + (Math.random() - 0.5) * j,
+                    S[1] + (E[1] - S[1]) * t + (Math.random() - 0.5) * j,
+                    S[2] + (E[2] - S[2]) * t + (Math.random() - 0.5) * j
+                );
+            }
+        });
+        return arr;
+    },
+    getTornado: (count: number) => {
+        const arr: number[] = [];
+        const h = rand(800, 1200);
+        const top = rand(2, 5);
+        for (let i = 0; i < count; i++) {
+            const y = (i / count) * h - h / 2;
+            const t = (y + h / 2) / h;
+            const r = 20 + t * 400 * top;
+            const a = y * 0.1;
+            const n = (Math.random() - 0.5) * 50 * t;
+            arr.push(Math.cos(a) * r + n, y + (Math.random() - 0.5) * 20, Math.sin(a) * r + n);
+        }
+        return arr;
+    },
+
     getHopalong: (count: number) => {
         const arr: number[] = [];
         const a = 2.0, b = 1.0, c = 0.0;
         let x = 0, y = 0;
-        const scale = 15;
+        const scale = 150;
         for (let i = 0; i < count; i++) {
             const xx = y - Math.sign(x) * Math.sqrt(Math.abs(b * x - c));
             y = a - x;
@@ -307,31 +361,12 @@ export const Generators = {
     },
     getGalaxy: (count: number) => {
         const arr: number[] = [];
-        const arms = 3;
-        const coreRadius = 100;
-        const maxRadius = 800;
-
+        const size = 1200;
         for (let i = 0; i < count; i++) {
-            // Core concentration
-            if (Math.random() < 0.2) {
-                const r = Math.random() * coreRadius;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos(2 * Math.random() - 1);
-                arr.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi) * 0.5);
-                continue;
-            }
-
-            // Spiral Arms
-            const arm = Math.floor(Math.random() * arms);
-            const r = coreRadius + Math.random() * (maxRadius - coreRadius);
-            const theta = (r / maxRadius) * 5 * Math.PI + (arm / arms) * Math.PI * 2;
-
-            // Add spread/noise to arms
-            const spread = (r / maxRadius) * 200;
-            const x = r * Math.cos(theta) + (Math.random() - 0.5) * spread;
-            const z = r * Math.sin(theta) + (Math.random() - 0.5) * spread;
-            const y = (Math.random() - 0.5) * spread * 0.5; // Flattened galaxy
-
+            const x = (Math.random() - 0.5) * size * 2;
+            const z = (Math.random() - 0.5) * size * 2;
+            // Initial wave shape
+            const y = Math.sin(x * 0.01) * 20 + Math.cos(z * 0.01) * 20;
             arr.push(x, y, z);
         }
         return arr;

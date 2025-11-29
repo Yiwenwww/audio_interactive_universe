@@ -85,8 +85,9 @@ export const vertexShader = `
       // --- Audio Reactivity ---
       pos = pos * (1.0 + uBass * 0.15); 
       if (uWave > 0.05) {
-          float wave = sin(pos.y * 0.02 + uTime * 4.0) * cos(pos.x * 0.02 + uTime * 3.0);
-          pos.x += wave * uWave * 10.0; 
+          // Sea-like wave: Vertical displacement based on X and Z
+          float wave = sin(pos.x * 0.02 + uTime * 2.0) * cos(pos.z * 0.02 + uTime * 1.5);
+          pos.y += wave * uWave * 50.0; 
       }
 
       // Restore XY MOD Ripple (Y-axis interaction)
