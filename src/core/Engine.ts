@@ -442,6 +442,7 @@ export class Engine {
     }
 
     onMouseMove(event: MouseEvent) {
+        // Enhanced sensitivity: Multiplier increased to map wider range
         this.mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouseVector.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
@@ -763,11 +764,12 @@ export class Engine {
         this.updateCursor();
 
         // Camera Orbit (Mouse)
-        const targetCamX = this.mouseVector.x * 300;
-        const targetCamY = this.mouseVector.y * 300;
+        // Enhanced Sensitivity: Increased range (600) and speed (0.1)
+        const targetCamX = this.mouseVector.x * 600;
+        const targetCamY = this.mouseVector.y * 600;
 
-        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.05 * this.simSpeed;
-        this.camera.position.y += (-targetCamY - this.camera.position.y) * 0.05 * this.simSpeed;
+        this.camera.position.x += (targetCamX - this.camera.position.x) * 0.1 * this.simSpeed;
+        this.camera.position.y += (-targetCamY - this.camera.position.y) * 0.1 * this.simSpeed;
         this.camera.lookAt(this.scene.position);
 
         this.renderer.render(this.scene, this.camera);
