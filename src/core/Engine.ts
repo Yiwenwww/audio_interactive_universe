@@ -41,6 +41,16 @@ export class Engine {
     isDisposed = false;
     clock = new THREE.Clock();
 
+    // Touch & State
+    touchStartTimes: Record<number, number> = {};
+    lastTap = 0;
+    isMouseDown = false;
+
+    styleList = ['Universe', 'Ink', 'Oil', 'Forest', 'Sketch', 'Cell', 'Ocean', 'Fire'];
+    materialList = ['Particle', 'Glass', 'Plant', 'Silk', 'Metal', 'Rock'];
+    currentStyleIndex = 0;
+    currentEffectIndex = 0;
+
     // Audio
     audioManager: AudioManager;
     bassSensitivity = 1.0;
@@ -275,7 +285,7 @@ export class Engine {
         this.raycaster.setFromCamera(this.mouseVector, this.camera);
         const intersect = new THREE.Vector3();
         this.raycaster.ray.intersectPlane(this.mousePlane, intersect);
-        this.worldMouse.copy(intersect);
+        this.worldMouse.copy(intersect); // Store for shader interaction
 
         this.cursorHead.position.copy(intersect);
         this.trailPositions.pop();
@@ -499,70 +509,88 @@ export class Engine {
     }
 
     // Touch Handling
-    lastTapTime: number = 0;
 
-    onTouchStart(event: TouchEvent) {
-        if ((event.target as HTMLElement).closest('#hologram-ui')) return;
+    onTouchStart(e: TouchEvent) {
+        if ((e.target as HTMLElement).closest('#hologram-ui')) return; // Allow UI interaction
+        e.preventDefault();
 
-        const currentTime = new Date().getTime();
+        const now = Date.now();
+        const touches = e.touches;
 
-        // Gesture Logic
-        if (event.touches.length === 2) {
-            // 2-finger tap: Cycle Style (Tab)
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
-            event.preventDefault();
-        } else if (event.touches.length === 3) {
-            // 3-finger tap: Cycle Effect (Space)
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
-            event.preventDefault();
-        }
-
-        // Double Tap Detection for "Click" Effect (Pinch/Distortion)
-        // STRICTLY ignore if more than 1 finger is present
-        if (event.touches.length > 1) {
-            this.lastTapTime = 0; // Reset tap timer to prevent accidental double tap after gesture
-            return;
-        }
-
-        const tapLength = currentTime - this.lastTapTime;
-
-        if (tapLength < 300 && tapLength > 0) {
-            // Double Tap Detected!
-            if (this.xyMode) {
-                this.isPinching = true;
-                this.audioManager.setDistortion(100);
+        // Track touch start times
+        for (let i = 0; i < touches.length; i++) {
+            if (!this.touchStartTimes[touches[i].identifier]) {
+                this.touchStartTimes[touches[i].identifier] = now;
             }
-            event.preventDefault(); // Prevent zoom
+        }
+
+        if (touches.length === 1) {
+            // Double Tap Check (Mouse Click -> Pinch Toggle)
+            if (now - this.lastTap < 300) {
+                this.togglePinch();
+                this.lastTap = 0;
+            } else {
+                this.lastTap = now;
+            }
+            // Update position immediately
+            const t = touches[0];
+            this.onMouseMove({ clientX: t.clientX, clientY: t.clientY } as MouseEvent);
+
+        } else if (touches.length === 2) {
+            // Check logic: One Held + One Tap vs Two Finger Tap
+            const t1 = touches[0];
+            const t1Start = this.touchStartTimes[t1.identifier] || now;
+
+            // If first finger held > 400ms, trigger Space logic (Material)
+            if (now - t1Start > 400) {
+                this.cycleMaterial();
+            } else {
+                // Likely simultaneous touch -> Tab logic (Style)
+                // We can trigger this on touch start for responsiveness
+                this.cycleStyle();
+            }
+        }
+    }
+
+    onTouchMove(e: TouchEvent) {
+        if ((e.target as HTMLElement).closest('#hologram-ui')) return;
+        e.preventDefault();
+        if (e.touches.length > 0) {
+            const t = e.touches[0];
+            this.onMouseMove({ clientX: t.clientX, clientY: t.clientY } as MouseEvent);
+        }
+    }
+
+    onTouchEnd(e: TouchEvent) {
+        // Cleanup logic if needed
+        // Remove ended touches from tracking
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            delete this.touchStartTimes[e.changedTouches[i].identifier];
+        }
+    }
+
+    // Helper Functions
+    cycleMaterial() {
+        this.currentEffectIndex = (this.currentEffectIndex + 1) % this.materialList.length;
+        this.setMaterialEffect(this.materialList[this.currentEffectIndex]);
+    }
+
+    cycleStyle() {
+        this.currentStyleIndex = (this.currentStyleIndex + 1) % this.styleList.length;
+        this.setRenderStyle(this.styleList[this.currentStyleIndex]);
+    }
+
+    togglePinch() {
+        this.isMouseDown = !this.isMouseDown; // Toggle visual force state
+
+        if (this.isMouseDown) {
+            this.isPinching = true;
+            this.audioManager.setDistortion(100);
+            console.log("Pinch Effect: ON");
         } else {
-            // Single Tap / Drag Start
-            // Do NOT trigger pinch here, just update position in onTouchMove
-        }
-        this.lastTapTime = currentTime;
-    }
-
-    onTouchMove(event: TouchEvent) {
-        if (event.touches.length > 0) {
-            const touch = event.touches[0];
-            this.mouseVector.x = (touch.clientX / window.innerWidth) * 2 - 1;
-            this.mouseVector.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-
-            if (this.xyMode) {
-                this.updateAudioModulation(touch.clientX, touch.clientY);
-            }
-
-            // Theremin Control
-            if (this.audioManager.isThereminActive) {
-                const freq = 200 + (touch.clientX / window.innerWidth) * 800;
-                const vol = 1.0 - (touch.clientY / window.innerHeight);
-                this.audioManager.updateTheremin(freq, Math.max(0, Math.min(1, vol)));
-            }
-        }
-    }
-
-    onTouchEnd() {
-        if (this.xyMode) {
             this.isPinching = false;
             this.audioManager.setDistortion(0);
+            console.log("Pinch Effect: OFF");
         }
     }
 
