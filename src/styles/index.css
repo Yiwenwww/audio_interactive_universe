@@ -12,6 +12,25 @@ body {
     font-family: var(--font-mono);
     overflow: hidden;
     cursor: none;
+    user-select: none;
+    transition: background-color 1.5s ease;
+    touch-action: none;
+}
+
+/* Force Canvas to hide cursor */
+canvas {
+    display: block;
+    cursor: none !important;
+    touch-action: none;
+}
+
+/* UI Container Overrides */
+#hologram-ui {
+    cursor: default;
+    touch-action: pan-y;
+    /* Allow scrolling in UI */
+    scrollbar-width: thin;
+    scrollbar-color: #0ff rgba(0, 20, 40, 0.5);
 }
 
 * {
@@ -25,9 +44,11 @@ body {
 
 ::-webkit-scrollbar-track {
     background: rgba(0, 20, 40, 0.5);
+    border-left: 1px solid rgba(0, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
     background: rgba(0, 255, 255, 0.2);
+    border: 1px solid rgba(0, 255, 255, 0.5);
     border-radius: 3px;
 }
