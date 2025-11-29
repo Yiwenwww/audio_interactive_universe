@@ -55,6 +55,54 @@ export const Generators = {
             z: x * y - b * z
         }), 15, count, 0.002, 2);
     },
+    getRikitake: (count: number) => {
+        const a = 5, b = 2;
+        return generateAttractor((x, y, z) => ({
+            x: -a * x + y * z,
+            y: -a * y + x * (b - z),
+            z: 1 - x * y
+        }), 20, count, 0.01);
+    },
+    getMultiChua: (count: number) => {
+        // Sine-Chua for multi-scroll
+        const a = 10.82, b = 14.286, c = 1.3; // Tuned constants
+        return generateAttractor((x, y, z) => ({
+            x: a * (y - x + c * Math.sin(x)),
+            y: x - y + z,
+            z: -b * y
+        }), 50, count, 0.01);
+    },
+    getHalvorsen: (count: number) => {
+        const a = 1.4;
+        return generateAttractor((x, y, z) => ({
+            x: -a * x - 4 * y - 4 * z - y * y,
+            y: -a * y - 4 * z - 4 * x - z * z,
+            z: -a * z - 4 * x - 4 * y - x * x
+        }), 40, count, 0.005);
+    },
+    getThomas: (count: number) => {
+        const b = 0.208186;
+        return generateAttractor((x, y, z) => ({
+            x: Math.sin(y) - b * x,
+            y: Math.sin(z) - b * y,
+            z: Math.sin(x) - b * z
+        }), 150, count, 0.05);
+    },
+    getSprott: (count: number) => {
+        return generateAttractor((x, y, z) => ({
+            x: y,
+            y: -x + y * z,
+            z: 1 - y * y
+        }), 100, count, 0.02);
+    },
+    getFourWing: (count: number) => {
+        const a = 0.2, b = 0.01, c = -0.4;
+        return generateAttractor((x, y, z) => ({
+            x: a * x + y * z,
+            y: b * x + c * y - x * z,
+            z: -z - x * y
+        }), 150, count, 0.05);
+    },
     getMenger: (count: number) => {
         const arr: number[] = [];
         const size = 600;
@@ -146,11 +194,46 @@ export const Generators = {
     },
     getUniverse: (count: number) => { const arr: number[] = []; const arms = 5; const spin = 0.2; const spread = 1.0; for (let i = 0; i < count; i++) { const t = Math.random(); const angle = t * Math.PI * 2 * arms * spin + ((i % arms) * Math.PI * 2 / arms); const r = 800 * t + 50; const nX = (Math.random() - 0.5) * 200 * t * spread; const nY = (Math.random() - 0.5) * 200 * t * spread; const nZ = (Math.random() - 0.5) * 150 * (1 - t); arr.push(Math.cos(angle) * r + nX, Math.sin(angle) * r + nY, nZ); } return arr; },
     getHeart: (count: number) => { const arr: number[] = []; for (let i = 0; i < count; i++) { const t = Math.random() * Math.PI * 2; let x = 16 * Math.pow(Math.sin(t), 3); let y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); let z = (Math.random() - 0.5) * 10; const s = 25; const r = s * (Math.random() * 0.2 + 0.8); arr.push(x * r, y * r, z * s * 4 * Math.random()); } return arr; },
-    getMobius: (count: number) => { const arr: number[] = []; for (let i = 0; i < count; i++) { const u = Math.random() * Math.PI * 2; const v = (Math.random() * 2) - 1; const r = 350; const sw = 150; arr.push((r + v * sw / 2 * Math.cos(u / 2)) * Math.cos(u), (r + v * sw / 2 * Math.cos(u / 2)) * Math.sin(u), v * sw / 2 * Math.sin(u / 2)); } return arr; },
-    getPenrose: (count: number) => { const arr: number[] = []; const s = 500; const edges = [[[-s, -s, -s], [s, -s, -s]], [[s, -s, -s], [s, s, -s]], [[s, s, -s], [-s, s, -s]], [[-s, s, -s], [-s, -s, -s]], [[-s, -s, s], [s, -s, s]], [[s, -s, s], [s, s, s]], [[s, s, s], [-s, s, s]], [[-s, s, s], [-s, -s, s]], [[-s, -s, -s], [-s, -s, s]], [[s, -s, -s], [s, -s, s]], [[s, s, -s], [s, s, s]], [[-s, s, -s], [-s, s, s]]]; const p = Math.floor(count / edges.length); edges.forEach(e => { const [S, E] = e; for (let i = 0; i < p; i++) { const t = Math.random(); const j = 20; arr.push(S[0] + (E[0] - S[0]) * t + (Math.random() - 0.5) * j, S[1] + (E[1] - S[1]) * t + (Math.random() - 0.5) * j, S[2] + (E[2] - S[2]) * t + (Math.random() - 0.5) * j); } }); return arr; },
-    getTornado: (count: number) => { const arr: number[] = []; const h = rand(800, 1200); const top = rand(2, 5); for (let i = 0; i < count; i++) { const y = (i / count) * h - h / 2; const t = (y + h / 2) / h; const r = 20 + t * 400 * top; const a = y * 0.1; const n = (Math.random() - 0.5) * 50 * t; arr.push(Math.cos(a) * r + n, y + (Math.random() - 0.5) * 20, Math.sin(a) * r + n); } return arr; },
-    getDNA: (count: number) => { const arr: number[] = []; const twist = 0.1; const rad = 200; const len = 1500; for (let i = 0; i < count; i++) { const l = i % 2 === 0 ? 1 : -1; const t = (i / count) * len - len / 2; const a = t * twist; const n = (Math.random() - 0.5) * 20; arr.push(Math.cos(a + l * Math.PI) * rad + n, Math.sin(a + l * Math.PI) * rad + n, t + (Math.random() - 0.5) * 50); } return arr; },
-    getAtom: (count: number) => { const arr: number[] = []; const ns = 100; const o = 4; for (let i = 0; i < count; i++) { if (i < count * 0.2) { const r = Math.random() * ns; const t = Math.random() * Math.PI * 2; const p = Math.acos(2 * Math.random() - 1); arr.push(r * Math.sin(p) * Math.cos(t), r * Math.sin(p) * Math.sin(t), r * Math.cos(p)); } else { const oi = Math.floor(Math.random() * o); const ao = (Math.PI / o) * oi; const t = Math.random() * Math.PI * 2; const rad = rand(300, 600); const x0 = rad * Math.cos(t); const y0 = rad * Math.sin(t) * 0.3; const z0 = (Math.random() - 0.5) * 20; arr.push(x0 * Math.cos(ao) - y0 * Math.sin(ao), x0 * Math.sin(ao) + y0 * Math.cos(ao), z0 + x0 * Math.sin(ao * 2)); } } return arr; },
+    getKleinian: (count: number) => {
+        const arr: number[] = [];
+        const scale = 300;
+        // Random Iterated Function System approach for Kleinian-like structure
+        let x = 0, y = 0, z = 0;
+        for (let i = 0; i < count; i++) {
+            const r = Math.random();
+            if (r < 0.5) {
+                // Mobius transformation 1
+                const d = (x - 1) * (x - 1) + y * y + z * z;
+                x = (x - 1) / d + 1; y = y / d; z = z / d;
+            } else {
+                // Mobius transformation 2
+                const d = (x + 1) * (x + 1) + y * y + z * z;
+                x = (x + 1) / d - 1; y = y / d; z = z / d;
+            }
+            // Rotate/Scale
+            const tempX = x * 0.95 + z * 0.05;
+            z = z * 0.95 - x * 0.05;
+            x = tempX;
+
+            if (i > 100) { // Skip warmup
+                arr.push(x * scale, y * scale, z * scale);
+            }
+        }
+        return arr;
+    },
+    getHopalong: (count: number) => {
+        const arr: number[] = [];
+        const a = 2.0, b = 1.0, c = 0.0;
+        let x = 0, y = 0;
+        const scale = 15;
+        for (let i = 0; i < count; i++) {
+            const xx = y - Math.sign(x) * Math.sqrt(Math.abs(b * x - c));
+            y = a - x;
+            x = xx;
+            arr.push(x * scale, y * scale, (Math.random() - 0.5) * 10); // 2D attractor, adding Z noise
+        }
+        return arr;
+    },
     getRose: (count: number) => {
         const arr: number[] = [];
         for (let i = 0; i < count; i++) {
@@ -222,56 +305,34 @@ export const Generators = {
         }
         return arr;
     },
-    getLily: (count: number) => {
+    getGalaxy: (count: number) => {
         const arr: number[] = [];
+        const arms = 3;
+        const coreRadius = 100;
+        const maxRadius = 800;
+
         for (let i = 0; i < count; i++) {
-            const u = Math.random();
-            const v = Math.random() * Math.PI * 2;
-            const h = u * 600 - 300;
-            const flare = Math.pow(u, 2) * 200;
-            const petalFactor = Math.max(0, (u - 0.5) * 2);
-            const shape = 1 + 0.5 * Math.sin(6 * v) * petalFactor;
-            const r = (30 + flare) * shape;
-            const curl = Math.pow(u, 4) * 100;
-            const x = (r + curl) * Math.cos(v);
-            const z = (r + curl) * Math.sin(v);
-            const y = h;
+            // Core concentration
+            if (Math.random() < 0.2) {
+                const r = Math.random() * coreRadius;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                arr.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi) * 0.5);
+                continue;
+            }
+
+            // Spiral Arms
+            const arm = Math.floor(Math.random() * arms);
+            const r = coreRadius + Math.random() * (maxRadius - coreRadius);
+            const theta = (r / maxRadius) * 5 * Math.PI + (arm / arms) * Math.PI * 2;
+
+            // Add spread/noise to arms
+            const spread = (r / maxRadius) * 200;
+            const x = r * Math.cos(theta) + (Math.random() - 0.5) * spread;
+            const z = r * Math.sin(theta) + (Math.random() - 0.5) * spread;
+            const y = (Math.random() - 0.5) * spread * 0.5; // Flattened galaxy
+
             arr.push(x, y, z);
-        }
-        return arr;
-    },
-    getLotus: (count: number) => {
-        const arr: number[] = [];
-        for (let i = 0; i < count; i++) {
-            const u = Math.random() * Math.PI * 2;
-            const v = Math.random();
-            const shape = Math.abs(Math.cos(4 * u));
-            const r = v * 400;
-            const h = Math.pow(v, 2) * 150 + v * 100 * shape;
-            const noise = (Math.random() - 0.5) * 20;
-            const x = r * Math.cos(u);
-            const z = r * Math.sin(u);
-            const y = h - 100 + noise;
-            arr.push(x, y, z);
-        }
-        return arr;
-    },
-    getFern: (count: number) => {
-        const arr: number[] = [];
-        let x = 0, y = 0;
-        for (let i = 0; i < count; i++) {
-            const r = Math.random();
-            let nx, ny;
-            if (r < 0.01) { nx = 0; ny = 0.16 * y; }
-            else if (r < 0.86) { nx = 0.85 * x + 0.04 * y; ny = -0.04 * x + 0.85 * y + 1.6; }
-            else if (r < 0.93) { nx = 0.2 * x - 0.26 * y; ny = 0.23 * x + 0.22 * y + 1.6; }
-            else { nx = -0.15 * x + 0.28 * y; ny = 0.26 * x + 0.24 * y + 0.44; }
-            x = nx; y = ny;
-            const scale = 60;
-            const px = x * scale;
-            const py = y * scale - 300;
-            const z = Math.pow(x / 3, 2) * 10 - Math.pow(y / 10, 2) * 20;
-            arr.push(px, py, z);
         }
         return arr;
     }
