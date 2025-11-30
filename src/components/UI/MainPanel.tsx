@@ -133,13 +133,17 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
 
     const Tag = ({ label, onClick, selected }: { label: string, onClick: () => void, selected?: boolean }) => (
         <div
-            onClick={onClick}
+            onPointerDown={(e) => {
+                e.preventDefault(); // Prevent ghost clicks/scrolling interference for rapid taps
+                onClick();
+            }}
             style={{
                 fontSize: 9, color: selected ? '#000' : 'rgba(0,255,255,0.7)',
                 border: selected ? '1px solid #fff' : '1px solid rgba(0,255,255,0.3)',
                 padding: '4px 8px', cursor: 'pointer', transition: 'all 0.2s',
                 background: selected ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0,0,0,0.3)',
-                userSelect: 'none', textTransform: 'uppercase', flexGrow: 1, textAlign: 'center'
+                userSelect: 'none', textTransform: 'uppercase', flexGrow: 1, textAlign: 'center',
+                touchAction: 'none' // Prevent browser handling gestures on the button
             }}
         >
             {label}
@@ -234,6 +238,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                                         engine.audioManager.setupFile(audio);
                                     });
                                 }
+                                e.target.value = ''; // Reset input to allow re-uploading same file
                             }}
                             style={{
                                 fontSize: 10, color: 'rgba(0, 255, 255, 0.8)', width: '100%',

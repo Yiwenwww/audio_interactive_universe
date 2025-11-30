@@ -56,10 +56,20 @@ export class AudioManager {
         this.initContext();
         if (!this.ctx) return;
 
+        // Ensure previous audio is stopped/paused
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement.src = ""; // Detach source
+            this.audioElement = null;
+        }
+
         await this.resume();
 
         // Disconnect old source if exists
-        if (this.source) this.source.disconnect();
+        if (this.source) {
+            this.source.disconnect();
+            this.source = null;
+        }
 
         this.audioElement = audioElement; // Store reference for play/pause
         this.source = this.ctx.createMediaElementSource(audioElement);
@@ -145,22 +155,28 @@ export class AudioManager {
             this.thereminGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
         }
     }
+
     play() {
         if (this.audioElement && !this.audioElement.paused) return; // Already playing
-        this.audioElement?.play();
+        this.resume().then(() => {
+            this.audioElement?.play();
+        });
     }
 
     pause() {
         this.audioElement?.pause();
+        if (this.ctx && this.ctx.state === 'running') {
+            this.ctx.suspend(); // Immediate silence
+        }
     }
 
     togglePlayPause(): boolean {
         if (!this.audioElement) return false;
         if (this.audioElement.paused) {
-            this.audioElement.play();
+            this.play();
             return true; // Now playing
         } else {
-            this.audioElement.pause();
+            this.pause();
             return false; // Now paused
         }
     }
