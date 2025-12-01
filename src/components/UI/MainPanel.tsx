@@ -27,6 +27,11 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
     const [xyMode, setXyMode] = useState(false);
     const [thereminActive, setThereminActive] = useState(false); // Track Theremin mode
     const [isAudioPlaying, setIsAudioPlaying] = useState(false); // Track play/pause state
+    const [trackName, setTrackName] = useState<string>(''); // Track uploaded file name
+
+    // ... (inside return)
+
+
 
     // Lists for cycling
     const renderStyles = ['Universe', 'Ink', 'Oil', 'Sketch', 'Forest', 'Ocean', 'Fire', 'Cell'];
@@ -56,7 +61,41 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+
+        // Mobile Gestures (Revised)
+        let firstTouchTime = 0;
+        const handleTouch = (e: TouchEvent) => {
+            const now = Date.now();
+
+            if (e.touches.length === 1) {
+                firstTouchTime = now;
+            } else if (e.touches.length === 2) {
+                const timeDiff = now - firstTouchTime;
+
+                if (timeDiff < 250) {
+                    // Two-Finger Tap (Simultaneous) -> Cycle Render Style (Tab)
+                    const currentIndex = renderStyles.indexOf(currentStyle);
+                    const nextIndex = (currentIndex + 1) % renderStyles.length;
+                    const nextStyle = renderStyles[nextIndex];
+                    setCurrentStyle(nextStyle);
+                    if (engine) engine.setRenderStyle(nextStyle);
+                } else {
+                    // Hold + Tap (One held, one tapped) -> Cycle Material Effect (Space)
+                    const currentIndex = materialEffects.indexOf(currentEffect);
+                    const nextIndex = (currentIndex + 1) % materialEffects.length;
+                    const nextEffect = materialEffects[nextIndex];
+                    setCurrentEffect(nextEffect);
+                    if (engine) engine.setMaterialEffect(nextEffect);
+                }
+            }
+        };
+
+        window.addEventListener('touchstart', handleTouch);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('touchstart', handleTouch);
+        };
     }, [currentStyle, currentEffect, engine]);
 
     useEffect(() => {
@@ -221,129 +260,132 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
             </ControlSection>
 
             <ControlSection title=">> SONIC RESONANCE FIELD" defaultCollapsed>
-                <div style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(0, 255, 255, 0.8)', fontSize: 10, marginBottom: 2 }}>
-                        <span>AUDIO SOURCE</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                        <input
-                            type="file"
-                            accept=".mp3,audio/*"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file && engine.audioManager) {
-                                    const audio = new Audio(URL.createObjectURL(file));
-                                    audio.loop = true;
-                                    audio.play().then(() => {
-                                        engine.audioManager.setupFile(audio);
-                                    });
-                                }
-                                e.target.value = ''; // Reset input to allow re-uploading same file
-                            }}
-                            style={{
-                                fontSize: 10, color: 'rgba(0, 255, 255, 0.8)', width: '100%',
-                                background: 'rgba(0, 0, 0, 0.3)', border: '1px dashed rgba(0, 255, 255, 0.3)',
-                                padding: 5, cursor: 'pointer'
-                            }}
-                        />
-                    </div>
-
-                    {/* Play/Pause Button */}
-                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                        <button
-                            onClick={() => {
-                                const nowPlaying = engine.audioManager.togglePlayPause();
-                                setIsAudioPlaying(nowPlaying);
-                            }}
-                            style={{
-                                fontSize: 10, color: isAudioPlaying ? '#000' : '#0ff',
-                                background: isAudioPlaying ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0,0,0,0.3)',
-                                border: '1px solid rgba(0, 255, 255, 0.3)',
-                                padding: '6px 12px', cursor: 'pointer', flexGrow: 1,
-                                textTransform: 'uppercase', transition: 'all 0.2s'
-                            }}
-                        >
-                            {isAudioPlaying ? '❚❚ PAUSE' : '▶ PLAY'}
-                        </button>
-                    </div>
-
-
-
-
-
-                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 9, color: '#0ff' }}>THEREMIN MODE</span>
-                            <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(TOUCH INTERACTIVE)</span>
-                        </div>
-                        <Toggle label="" active={thereminActive} onToggle={async () => {
-                            if (!thereminActive) {
-                                await engine.audioManager.startTheremin();
-                                setThereminActive(true);
-                                setIsAudioPlaying(false); // Sync UI state since audio is paused
-                                // Disable others
-                            } else {
-                                engine.audioManager.stopTheremin();
-                                setThereminActive(false);
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(0, 255, 255, 0.8)', fontSize: 10, marginBottom: 2 }}>
+                    <span>AUDIO SOURCE</span>
+                    <span style={{ fontSize: 9, color: '#fff', fontStyle: 'italic', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {trackName}
+                    </span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    <input
+                        type="file"
+                        accept=".mp3,audio/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file && engine.audioManager) {
+                                setTrackName(file.name); // Update track name
+                                const audio = new Audio(URL.createObjectURL(file));
+                                audio.loop = true;
+                                audio.play().then(() => {
+                                    engine.audioManager.setupFile(audio);
+                                    setIsAudioPlaying(true); // Sync Play/Pause button state
+                                });
                             }
-                        }} />
-                    </div>
+                            e.target.value = ''; // Reset input to allow re-uploading same file
+                        }}
+                        style={{
+                            fontSize: 10, color: 'rgba(0, 255, 255, 0.8)', width: '100%',
+                            background: 'rgba(0, 0, 0, 0.3)', border: '1px dashed rgba(0, 255, 255, 0.3)',
+                            padding: 5, cursor: 'pointer'
+                        }}
+                    />
+                </div>
 
-                    <div style={{ marginTop: 10 }}>
-                        <label style={{ fontSize: '10px', color: '#888' }}>VOLUME</label>
-                        <input type="range" min="0" max="1" step="0.01" defaultValue="0.5"
-                            onChange={(e) => engine.audioManager.setVolume(parseFloat(e.target.value))}
-                            style={{ width: '100%', accentColor: '#0ff' }}
-                        />
-                    </div>
-                    <div style={{ marginTop: 5 }}>
-                        <label style={{ fontSize: '10px', color: '#888' }}>BASS SENSITIVITY</label>
-                        <input type="range" min="0" max="5" step="0.1" defaultValue="1.0"
-                            onChange={(e) => engine.bassSensitivity = parseFloat(e.target.value)}
-                            style={{ width: '100%', accentColor: '#0ff' }}
-                        />
-                    </div>
-                    <div style={{ marginTop: 5 }}>
-                        <label style={{ fontSize: '10px', color: '#888' }}>TREBLE SENSITIVITY</label>
-                        <input type="range" min="0" max="5" step="0.1" defaultValue="1.0"
-                            onChange={(e) => engine.trebleSensitivity = parseFloat(e.target.value)}
-                            style={{ width: '100%', accentColor: '#0ff' }}
-                        />
-                    </div>
-                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 9, color: '#0ff' }}>XY MODE</span>
-                        </div>
-                        <Toggle label="" active={xyMode} onToggle={() => {
-                            const newMode = !xyMode;
-                            setXyMode(newMode);
-                            engine.xyMode = newMode;
-                            if (engine.material) {
-                                engine.material.uniforms.uModY.value = newMode ? 1.0 : 0.0;
-                            }
-                        }} />
-                    </div>
+                {/* Play/Pause Button */}
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <button
+                        onClick={() => {
+                            const nowPlaying = engine.audioManager.togglePlayPause();
+                            setIsAudioPlaying(nowPlaying);
+                        }}
+                        style={{
+                            fontSize: 10, color: isAudioPlaying ? '#000' : '#0ff',
+                            background: isAudioPlaying ? 'rgba(0, 255, 255, 0.6)' : 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(0, 255, 255, 0.3)',
+                            padding: '6px 12px', cursor: 'pointer', flexGrow: 1,
+                            textTransform: 'uppercase', transition: 'all 0.2s'
+                        }}
+                    >
+                        {isAudioPlaying ? '❚❚ PAUSE' : '▶ PLAY'}
+                    </button>
+                </div>
 
-                    <div style={{ marginTop: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(0,255,255,0.7)', marginBottom: 2 }}>
-                            <span>CUTOFF / BRIGHTNESS</span>
-                            <span>RES / RIPPLE</span>
+
+
+
+
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 9, color: '#0ff' }}>THEREMIN MODE</span>
+                        <span style={{ fontSize: 8, color: 'rgba(0, 255, 255, 0.5)' }}>(TOUCH INTERACTIVE)</span>
+                    </div>
+                    <Toggle label="" active={thereminActive} onToggle={async () => {
+                        if (!thereminActive) {
+                            await engine.audioManager.startTheremin();
+                            setThereminActive(true);
+                            setIsAudioPlaying(false); // Sync UI state since audio is paused
+                            // Disable others
+                        } else {
+                            engine.audioManager.stopTheremin();
+                            setThereminActive(false);
+                        }
+                    }} />
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                    <label style={{ fontSize: '10px', color: '#888' }}>VOLUME</label>
+                    <input type="range" min="0" max="1" step="0.01" defaultValue="0.5"
+                        onChange={(e) => engine.audioManager.setVolume(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#0ff' }}
+                    />
+                </div>
+                <div style={{ marginTop: 5 }}>
+                    <label style={{ fontSize: '10px', color: '#888' }}>BASS SENSITIVITY</label>
+                    <input type="range" min="0" max="5" step="0.1" defaultValue="1.0"
+                        onChange={(e) => engine.bassSensitivity = parseFloat(e.target.value)}
+                        style={{ width: '100%', accentColor: '#0ff' }}
+                    />
+                </div>
+                <div style={{ marginTop: 5 }}>
+                    <label style={{ fontSize: '10px', color: '#888' }}>TREBLE SENSITIVITY</label>
+                    <input type="range" min="0" max="5" step="0.1" defaultValue="1.0"
+                        onChange={(e) => engine.trebleSensitivity = parseFloat(e.target.value)}
+                        style={{ width: '100%', accentColor: '#0ff' }}
+                    />
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(0,255,255,0.2)', paddingTop: 5 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 9, color: '#0ff' }}>XY MODE</span>
+                    </div>
+                    <Toggle label="" active={xyMode} onToggle={() => {
+                        const newMode = !xyMode;
+                        setXyMode(newMode);
+                        engine.xyMode = newMode;
+                        if (engine.material) {
+                            engine.material.uniforms.uModY.value = newMode ? 1.0 : 0.0;
+                        }
+                    }} />
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(0,255,255,0.7)', marginBottom: 2 }}>
+                        <span>CUTOFF / BRIGHTNESS</span>
+                        <span>RES / RIPPLE</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, height: 4 }}>
+                        <div style={{ flex: 1, background: 'rgba(0,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div id="monitor-cutoff" style={{ width: '0%', height: '100%', background: '#0ff', transition: 'width 0.05s' }} />
                         </div>
-                        <div style={{ display: 'flex', gap: 5, height: 4 }}>
-                            <div style={{ flex: 1, background: 'rgba(0,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
-                                <div id="monitor-cutoff" style={{ width: '0%', height: '100%', background: '#0ff', transition: 'width 0.05s' }} />
-                            </div>
-                            <div style={{ flex: 1, background: 'rgba(0,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
-                                <div id="monitor-res" style={{ width: '0%', height: '100%', background: '#0ff', transition: 'width 0.05s' }} />
-                            </div>
+                        <div style={{ flex: 1, background: 'rgba(0,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div id="monitor-res" style={{ width: '0%', height: '100%', background: '#0ff', transition: 'width 0.05s' }} />
                         </div>
                     </div>
+                </div>
 
-                    <div style={{ marginTop: 10 }}>
-                        <div style={{ fontSize: 9, color: 'rgba(0,255,255,0.7)', marginBottom: 2 }}>AUDIO SPECTRUM</div>
-                        <div style={{ border: '1px solid rgba(0,255,255,0.2)', background: 'rgba(0,0,0,0.3)' }}>
-                            <canvas ref={canvasRef} width={300} height={40} style={{ width: '100%', height: '40px', display: 'block' }} />
-                        </div>
+                <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 9, color: 'rgba(0,255,255,0.7)', marginBottom: 2 }}>AUDIO SPECTRUM</div>
+                    <div style={{ border: '1px solid rgba(0,255,255,0.2)', background: 'rgba(0,0,0,0.3)' }}>
+                        <canvas ref={canvasRef} width={300} height={40} style={{ width: '100%', height: '40px', display: 'block' }} />
                     </div>
                 </div>
             </ControlSection>
