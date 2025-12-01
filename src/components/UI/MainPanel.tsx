@@ -3,6 +3,7 @@ import { Engine } from '../../core/Engine';
 import { ControlSection } from './ControlSection';
 import { Slider } from './Slider';
 import { Toggle } from './Toggle';
+import { ImageAnalyzer } from '../../utils/ImageAnalyzer';
 
 interface Props {
     engine: Engine | null;
@@ -29,10 +30,15 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
     const [isAudioPlaying, setIsAudioPlaying] = useState(false); // Track play/pause state
     const [trackName, setTrackName] = useState<string>(''); // Track uploaded file name
 
+    // Image Analysis State
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [palette, setPalette] = useState<string[]>([]);
+
     // ... (inside return)
 
 
 
+    // Lists for cycling
     // Lists for cycling
     const renderStyles = ['Universe', 'Ink', 'Oil', 'Sketch', 'Forest', 'Ocean', 'Fire', 'Cell'];
     const materialEffects = ['Particle', 'Glass', 'Plant', 'Silk', 'Metal', 'Rock'];
@@ -388,6 +394,75 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                         <canvas ref={canvasRef} width={300} height={40} style={{ width: '100%', height: '40px', display: 'block' }} />
                     </div>
                 </div>
+            </ControlSection>
+
+            <ControlSection title=">> VISUAL SYNTHESIS">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    {/* Image Preview */}
+                    <div style={{
+                        width: 60, height: 60, border: '1px solid rgba(0,255,255,0.3)',
+                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                        overflow: 'hidden', borderRadius: 4
+                    }}>
+                        {imageSrc ? (
+                            <img id="preview-image" src={imageSrc} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <span style={{ fontSize: 8, color: 'rgba(0,255,255,0.3)' }}>NO IMG</span>
+                        )}
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const url = URL.createObjectURL(file);
+                                    setImageSrc(url);
+                                    // Reset palette until analyzed
+                                    setPalette([]);
+                                }
+                                e.target.value = '';
+                            }}
+                            style={{
+                                fontSize: 9, color: 'rgba(0, 255, 255, 0.8)', width: '100%',
+                                background: 'rgba(0, 0, 0, 0.3)', border: '1px dashed rgba(0, 255, 255, 0.3)',
+                                padding: 4, cursor: 'pointer'
+                            }}
+                        />
+
+                        <button
+                            onClick={() => {
+                                const img = document.getElementById('preview-image') as HTMLImageElement;
+                                if (img && engine) {
+                                    const colors = ImageAnalyzer.extractPalette(img);
+                                    setPalette(colors);
+                                    engine.setPalette(colors);
+                                }
+                            }}
+                            disabled={!imageSrc}
+                            style={{
+                                fontSize: 9, color: imageSrc ? '#000' : 'rgba(0,255,255,0.3)',
+                                background: imageSrc ? 'rgba(0, 255, 255, 0.8)' : 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(0, 255, 255, 0.3)',
+                                padding: '4px', cursor: imageSrc ? 'pointer' : 'default',
+                                textTransform: 'uppercase', transition: 'all 0.2s', fontWeight: 'bold'
+                            }}
+                        >
+                            ANALYZE & APPLY
+                        </button>
+                    </div>
+                </div>
+
+                {/* Palette Display */}
+                {palette.length > 0 && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 4, height: 12 }}>
+                        {palette.map((color, i) => (
+                            <div key={i} style={{ flex: 1, background: color, borderRadius: 2, border: '1px solid rgba(255,255,255,0.2)' }} />
+                        ))}
+                    </div>
+                )}
             </ControlSection>
 
             <ControlSection title=">> DYNAMICS & MOTION" defaultCollapsed>

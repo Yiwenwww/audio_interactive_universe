@@ -130,7 +130,9 @@ export class Engine {
                 uPlayColor: { value: 0.0 },
                 uEffect: { value: 0.0 },
                 uStyle: { value: 0.0 },
-                uMousePos: { value: new THREE.Vector3(0, 0, 0) }
+                uMousePos: { value: new THREE.Vector3(0, 0, 0) },
+                uPalette: { value: [new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0)] },
+                uUsePalette: { value: 0.0 }
             },
             vertexShader,
             fragmentShader,
@@ -232,6 +234,24 @@ export class Engine {
     updateLineColor(r: number, g: number, b: number) {
         if (this.linesMesh) {
             (this.linesMesh.material as THREE.LineBasicMaterial).color.setRGB(r, g, b);
+        }
+    }
+
+    setPalette(colors: string[]) {
+        if (!this.material) return;
+
+        const paletteColors = colors.map(c => new THREE.Color(c));
+        // Ensure we have 5 colors
+        while (paletteColors.length < 5) {
+            paletteColors.push(new THREE.Color(0xffffff));
+        }
+
+        this.material.uniforms.uPalette.value = paletteColors.slice(0, 5);
+        this.material.uniforms.uUsePalette.value = 1.0;
+
+        // Also update line color to the first dominant color
+        if (paletteColors.length > 0) {
+            this.updateLineColor(paletteColors[0].r, paletteColors[0].g, paletteColors[0].b);
         }
     }
 
@@ -425,6 +445,7 @@ export class Engine {
             this.scene.fog!.color.setHex(0xffffff);
             this.material!.blending = THREE.NormalBlending;
             this.material!.uniforms.uColorTint.value.setRGB(0.1, 0.1, 0.1);
+            this.material!.uniforms.uStyle.value = 4.0;
             if (this.linesMesh) {
                 (this.linesMesh.material as THREE.LineBasicMaterial).color.setHex(0x333333);
                 (this.linesMesh.material as THREE.Material).blending = THREE.NormalBlending;
