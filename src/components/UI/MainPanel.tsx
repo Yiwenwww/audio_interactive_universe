@@ -3,7 +3,7 @@ import { Engine } from '../../core/Engine';
 import { ControlSection } from './ControlSection';
 import { Slider } from './Slider';
 import { Toggle } from './Toggle';
-import { ImageAnalyzer } from '../../utils/ImageAnalyzer';
+import { ImageAnalyzer, ImageAnalysisResult } from '../../utils/ImageAnalyzer';
 
 interface Props {
     engine: Engine | null;
@@ -33,6 +33,7 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
     // Image Analysis State
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [palette, setPalette] = useState<string[]>([]);
+    const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
 
     // ... (inside return)
 
@@ -436,9 +437,10 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                             onClick={() => {
                                 const img = document.getElementById('preview-image') as HTMLImageElement;
                                 if (img && engine) {
-                                    const colors = ImageAnalyzer.extractPalette(img);
-                                    setPalette(colors);
-                                    engine.setPalette(colors);
+                                    const result = ImageAnalyzer.analyze(img);
+                                    setPalette(result.palette);
+                                    setAnalysisResult(result);
+                                    engine.applyAnalysis(result);
                                 }
                             }}
                             disabled={!imageSrc}
@@ -461,6 +463,16 @@ export const MainPanel: React.FC<Props> = ({ engine }) => {
                         {palette.map((color, i) => (
                             <div key={i} style={{ flex: 1, background: color, borderRadius: 2, border: '1px solid rgba(255,255,255,0.2)' }} />
                         ))}
+                    </div>
+                )}
+
+                {/* Metrics Display */}
+                {analysisResult && (
+                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, fontSize: 9, color: 'rgba(0,255,255,0.7)' }}>
+                        <div>BRIGHTNESS: {(analysisResult.brightness * 100).toFixed(0)}%</div>
+                        <div>CONTRAST: {(analysisResult.contrast * 100).toFixed(0)}%</div>
+                        <div>COMPLEXITY: {(analysisResult.complexity * 100).toFixed(0)}%</div>
+                        <div>WARMTH: {(analysisResult.warmth * 100).toFixed(0)}%</div>
                     </div>
                 )}
             </ControlSection>

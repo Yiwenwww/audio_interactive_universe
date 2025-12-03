@@ -3,6 +3,7 @@ import * as TWEEN from '@tweenjs/tween.js';
 import { vertexShader, fragmentShader } from './Shaders';
 import { Generators, getColors } from './Generators';
 import { AudioManager } from './Audio';
+import { ImageAnalysisResult } from '../utils/ImageAnalyzer';
 
 export class Engine {
     scene: THREE.Scene;
@@ -253,6 +254,40 @@ export class Engine {
         if (paletteColors.length > 0) {
             this.updateLineColor(paletteColors[0].r, paletteColors[0].g, paletteColors[0].b);
         }
+    }
+
+    applyAnalysis(result: ImageAnalysisResult) {
+        if (!this.material) return;
+
+        // 1. Apply Palette
+        this.setPalette(result.palette);
+
+        // 2. Adjust Background
+        // Map Warmth (0=Cold/Blue, 1=Warm/Red) to Hue
+        // Blue is ~0.6, Red is ~0.0/1.0. Let's map 0->0.6, 1->0.05
+        const hue = 0.6 - (result.warmth * 0.55);
+        // Darker background for high contrast images to make them pop
+        const lightness = Math.max(0.01, 0.05 - result.contrast * 0.03);
+
+        const bgColor = new THREE.Color().setHSL(hue, 0.3, lightness);
+        this.renderer.setClearColor(bgColor);
+        if (this.scene.fog) this.scene.fog.color.copy(bgColor);
+
+        // 3. Adjust Particles
+        // High complexity -> Smaller particles to show detail
+        const newSize = 6.0 - (result.complexity * 3.0);
+        this.material.uniforms.size.value = Math.max(2.0, newSize);
+
+        // Brightness -> Adjust Tint Intensity (careful not to blow out)
+        // Reset tint first to white-ish then apply
+        this.material.uniforms.uColorTint.value.setScalar(0.5 + result.brightness * 0.5);
+
+        // 4. Dynamics
+        // High Contrast -> Stronger Pulse
+        this.pulseIntensity = result.contrast * 0.8;
+
+        // High Complexity -> Faster Rotation
+        this.rotationSpeed = 0.5 + result.complexity * 2.0;
     }
 
     initCursor() {
